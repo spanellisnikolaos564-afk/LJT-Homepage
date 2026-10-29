@@ -25,6 +25,8 @@ jobs:
   # Build job
   build:
     runs-on: ubuntu-24.04
+    outputs:
+      pages_ready: ${{ steps.pages.outcome == 'success' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
@@ -43,14 +45,16 @@ jobs:
       - name: Minify JS files
         run: |
           uglifyjs assets/js/plugins/jquery.greedy-navigation.js assets/js/_main.js assets/js/theme.js -c -m -o assets/js/main.min.js
+      # GitHub Pages has to be enabled in the repository settings before deployment.
       - name: Configure GitHub Pages
         id: pages
         uses: actions/configure-pages@v6.0.0
         with:
           enablement: true
+        continue-on-error: true
       - name: Build with Jekyll
         # Outputs to the './_site' directory by default
-        run: bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
+        run: bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path || '/LJT-Homepage' }}"
         env:
           JEKYLL_ENV: production
       - name: Upload GitHub Pages artifact
@@ -58,6 +62,7 @@ jobs:
 
   # Deployment job
   deploy:
+    if: ${{ needs.build.outputs.pages_ready == 'true' }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
